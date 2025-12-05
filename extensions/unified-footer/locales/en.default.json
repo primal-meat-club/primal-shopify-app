@@ -1,0 +1,10 @@
+{
+  "primal_footer": {
+    "name": "Primal 500 Footer",
+    "settings": {
+      "show_newsletter": {
+        "label": "Show newsletter signup"
+      }
+    }
+  }
+}

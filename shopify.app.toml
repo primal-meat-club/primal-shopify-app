@@ -1,0 +1,35 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "565e7c02bd2f63f9f5c424eac4ea4e20"
+name = "Aura AI Shopping Assistant"
+application_url = "https://members.primal500.com"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+
+[webhooks]
+api_version = "2025-10"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks/app/uninstalled"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update" ]
+  uri = "/webhooks/app/scopes_update"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "write_products"
+
+[auth]
+redirect_urls = [
+  "https://members.primal500.com/auth/callback",
+  "https://members.primal500.com/auth/handoff"
+]
+
+[app_proxy]
+url = "https://api.primal500.com/apps/aura"
+subpath = "aura"
+prefix = "apps"
