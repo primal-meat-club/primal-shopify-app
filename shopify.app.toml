@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "565e7c02bd2f63f9f5c424eac4ea4e20"
-name = "Luca Shopping Assistant"
+name = "Luca AI Shopping Assistant"
 application_url = "https://primal-shopify-app.vercel.app"
 embedded = true
 
