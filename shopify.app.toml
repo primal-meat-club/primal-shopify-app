@@ -1,8 +1,8 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "565e7c02bd2f63f9f5c424eac4ea4e20"
-name = "Aura AI Shopping Assistant"
-application_url = "https://members.primal500.com"
+name = "Luca Shopping Assistant"
+application_url = "https://primal-shopify-app.vercel.app"
 embedded = true
 
 [build]
@@ -25,11 +25,11 @@ scopes = "write_products"
 
 [auth]
 redirect_urls = [
-  "https://members.primal500.com/auth/callback",
-  "https://members.primal500.com/auth/handoff"
+  "https://primal-shopify-app.vercel.app/auth/callback",
+  "https://primal-shopify-app.vercel.app/auth/shopify/callback"
 ]
 
 [app_proxy]
-url = "https://api.primal500.com/apps/aura"
+url = "https://aura-shopify-production.up.railway.app/apps/aura"
 subpath = "aura"
 prefix = "apps"
