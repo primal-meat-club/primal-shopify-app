@@ -30,6 +30,6 @@ redirect_urls = [
 ]
 
 [app_proxy]
-url = "https://aura-shopify-production.up.railway.app/apps/aura"
+url = "https://api.primal500.com/apps/aura"
 subpath = "aura"
 prefix = "apps"
