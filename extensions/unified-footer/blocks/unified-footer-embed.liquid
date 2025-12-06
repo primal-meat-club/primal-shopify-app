@@ -4,17 +4,17 @@
   Menu content is pulled from Shopify Navigation linklists.
 
   Menus used:
-  - footer-quick-links
-  - footer-shop
-  - footer-help
-  - footer-legal
+  - quick-links
+  - shop
+  - help
+  - legal
 {%- endcomment -%}
 
 {%- liquid
-  assign footer_quick_links = linklists['footer-quick-links']
-  assign footer_shop = linklists['footer-shop']
-  assign footer_help = linklists['footer-help']
-  assign footer_legal = linklists['footer-legal']
+  assign footer_quick_links = linklists['quick-links']
+  assign footer_shop = linklists['shop']
+  assign footer_help = linklists['help']
+  assign footer_legal = linklists['legal']
   assign show_newsletter = block.settings.show_newsletter
   assign newsletter_title = block.settings.newsletter_title
   assign newsletter_subtitle = block.settings.newsletter_subtitle
