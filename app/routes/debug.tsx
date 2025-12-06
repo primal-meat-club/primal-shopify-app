@@ -19,16 +19,38 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   // Test Supabase connection if requested
   if (testDb && process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    // Also test via direct REST API call
+    try {
+      const restUrl = `${process.env.SUPABASE_URL}/rest/v1/shopify_sessions?select=id&limit=1`;
+      const restResponse = await fetch(restUrl, {
+        headers: {
+          'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+      });
+      const restData = await restResponse.text();
+      config.restApiTest = {
+        status: restResponse.status,
+        statusText: restResponse.statusText,
+        data: restData.slice(0, 200),
+      };
+    } catch (e) {
+      config.restApiTest = {
+        error: e instanceof Error ? e.message : "Unknown error",
+      };
+    }
+
     try {
       const supabase = createClient(
         process.env.SUPABASE_URL,
         process.env.SUPABASE_SERVICE_ROLE_KEY
       );
 
-      // Try to read from shopify_sessions table
-      const { data, error, count } = await supabase
+      // Try a simpler select query (no head/count)
+      const { data, error } = await supabase
         .from("shopify_sessions")
-        .select("*", { count: "exact", head: true });
+        .select("id")
+        .limit(1);
 
       if (error) {
         config.dbTest = {
@@ -42,7 +64,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       } else {
         config.dbTest = {
           success: true,
-          sessionCount: count,
+          data: data,
         };
 
         // Try a test insert/delete
@@ -58,8 +80,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         if (insertError) {
           config.dbTest.insertTest = {
             success: false,
-            error: insertError.message,
-            code: insertError.code,
+            error: insertError.message || "No message",
+            code: insertError.code || "No code",
+            fullError: JSON.stringify(insertError),
           };
         } else {
           // Clean up test row
@@ -71,6 +94,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       config.dbTest = {
         success: false,
         error: e instanceof Error ? e.message : "Unknown error",
+        stack: e instanceof Error ? e.stack : undefined,
       };
     }
   }
