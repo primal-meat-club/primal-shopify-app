@@ -33,9 +33,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       if (error) {
         config.dbTest = {
           success: false,
-          error: error.message,
-          code: error.code,
-          details: error.details,
+          error: error.message || "No message",
+          code: error.code || "No code",
+          details: error.details || "No details",
+          hint: error.hint || "No hint",
+          fullError: JSON.stringify(error),
         };
       } else {
         config.dbTest = {
