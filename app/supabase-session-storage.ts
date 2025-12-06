@@ -15,7 +15,7 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
  * - is_online: BOOLEAN (online vs offline session)
  * - scope: TEXT (granted OAuth scopes)
  * - expires_at: TIMESTAMPTZ (token expiration)
- * - access_token: TEXT NOT NULL (the OAuth token)
+ * - access_token: TEXT (the OAuth token, nullable during OAuth begin phase)
  * - tenant_id: UUID (for multi-tenant support)
  */
 export class SupabaseSessionStorage implements SessionStorage {
@@ -26,29 +26,41 @@ export class SupabaseSessionStorage implements SessionStorage {
   }
 
   async storeSession(session: Session): Promise<boolean> {
+    const sessionData = {
+      id: session.id,
+      shop: session.shop,
+      state: session.state,
+      is_online: session.isOnline,
+      scope: session.scope,
+      expires_at: session.expires
+        ? new Date(session.expires).toISOString()
+        : null,
+      access_token: session.accessToken,
+    };
+
+    console.log(`[SupabaseSessionStorage] Storing session:`, {
+      id: session.id,
+      shop: session.shop,
+      hasToken: !!session.accessToken,
+      isOnline: session.isOnline,
+      scope: session.scope,
+    });
+
     const { error } = await this.supabase
       .from("shopify_sessions")
-      .upsert(
-        {
-          id: session.id,
-          shop: session.shop,
-          state: session.state,
-          is_online: session.isOnline,
-          scope: session.scope,
-          expires_at: session.expires
-            ? new Date(session.expires).toISOString()
-            : null,
-          access_token: session.accessToken,
-        },
-        { onConflict: "id" }
-      );
+      .upsert(sessionData, { onConflict: "id" });
 
     if (error) {
       console.error("[SupabaseSessionStorage] Failed to store session:", error);
+      console.error("[SupabaseSessionStorage] Session data attempted:", {
+        id: session.id,
+        shop: session.shop,
+        hasToken: !!session.accessToken,
+      });
       return false;
     }
 
-    console.log(`[SupabaseSessionStorage] Stored session for shop: ${session.shop}`);
+    console.log(`[SupabaseSessionStorage] Successfully stored session for shop: ${session.shop}, id: ${session.id}`);
     return true;
   }
 
