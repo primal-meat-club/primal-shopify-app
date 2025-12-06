@@ -25,7 +25,7 @@ const shopify = shopifyApp({
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY
   ),
-  distribution: AppDistribution.AppStore,
+  distribution: AppDistribution.SingleMerchant,
   ...(process.env.SHOP_CUSTOM_DOMAIN
     ? { customShopDomains: [process.env.SHOP_CUSTOM_DOMAIN] }
     : {}),
