@@ -21,7 +21,9 @@ api_version = "2025-10"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_products"
+# write_products - for product management
+# unauthenticated_read_content - for reading menus via Storefront API (inherits to created tokens)
+scopes = "write_products,unauthenticated_read_content"
 
 [auth]
 redirect_urls = [
