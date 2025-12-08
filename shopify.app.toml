@@ -21,9 +21,19 @@ api_version = "2025-10"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-# write_products - for product management
-# unauthenticated_read_content - for reading menus via Storefront API (inherits to created tokens)
-scopes = "write_products,unauthenticated_read_content"
+# Admin API:
+#   write_products - for product management
+#   write_themes - for theme deployment (CI/CD)
+# Storefront API (unauthenticated scopes - inherited by Storefront Access Tokens):
+#   unauthenticated_read_content - menus, pages, blog articles
+#   unauthenticated_read_product_listings - products, collections, shop info
+#   unauthenticated_read_product_tags - product tags for filtering
+#   unauthenticated_read_metaobjects - custom content types
+#   unauthenticated_read_checkouts - viewing cart/checkout state
+#   unauthenticated_write_checkouts - creating carts and checkouts
+#   unauthenticated_read_selling_plans - subscription plans
+#   unauthenticated_read_product_inventory - stock levels
+scopes = "write_products,write_themes,unauthenticated_read_content,unauthenticated_read_product_listings,unauthenticated_read_product_tags,unauthenticated_read_metaobjects,unauthenticated_read_checkouts,unauthenticated_write_checkouts,unauthenticated_read_selling_plans,unauthenticated_read_product_inventory"
 
 [auth]
 redirect_urls = [

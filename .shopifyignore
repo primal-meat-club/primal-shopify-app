@@ -1,0 +1,32 @@
+# IDE and editor directories
+.vscode/*
+.idea/*
+
+# Dependencies
+node_modules/*
+
+# Git
+.git/*
+
+# Build outputs
+build/*
+dist/*
+.cache/*
+
+# Environment files
+.env
+.env.*
+.env*.local
+
+# Shopify local files
+.shopify/*
+
+# React Router
+.react-router/*
+
+# Vercel
+.vercel/*
+
+# Prisma dev database
+prisma/*.sqlite
+prisma/*.sqlite-journal
