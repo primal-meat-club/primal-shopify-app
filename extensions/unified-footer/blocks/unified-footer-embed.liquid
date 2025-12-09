@@ -4,17 +4,17 @@
   Menu content is pulled from Shopify Navigation linklists.
 
   Menus used:
-  - quick-links
-  - shop
-  - help
-  - legal
+  - footer-quick-links
+  - footer-shop
+  - footer-help
+  - footer-legal
 {%- endcomment -%}
 
 {%- liquid
-  assign footer_quick_links = linklists['quick-links']
-  assign footer_shop = linklists['shop']
-  assign footer_help = linklists['help']
-  assign footer_legal = linklists['legal']
+  assign footer_quick_links = linklists['footer-quick-links']
+  assign footer_shop = linklists['footer-shop']
+  assign footer_help = linklists['footer-help']
+  assign footer_legal = linklists['footer-legal']
   assign show_newsletter = block.settings.show_newsletter
   assign newsletter_title = block.settings.newsletter_title
   assign newsletter_subtitle = block.settings.newsletter_subtitle
@@ -22,21 +22,40 @@
   assign replace_theme_footer = block.settings.replace_theme_footer
 -%}
 
-{%- if replace_theme_footer -%}
 <style>
-  /* Hide the theme's native footer when this embed is enabled */
+  /* Always hide the theme's native footer - unified footer replaces it */
   footer.footer,
-  .footer,
-  footer[role="contentinfo"],
+  .footer:not(#unified-footer):not(.primal-footer__wrapper),
+  footer[role="contentinfo"]:not(#unified-footer),
   .site-footer,
   #shopify-section-footer,
   #shopify-section-sections--footer,
   #shopify-section-primal-footer,
-  [id^="shopify-section"][id$="primal-footer"] {
+  [id^="shopify-section"][id$="primal-footer"],
+  [id*="__primal-footer"],
+  [id*="primal-footer"].shopify-section,
+  .shopify-section-group-footer-group,
+  div.primal-footer:not(#unified-footer),
+  section.primal-footer:not(#unified-footer) {
     display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+  /* Ensure our unified footer is always visible */
+  footer#unified-footer,
+  footer#unified-footer.primal-footer,
+  #unified-footer {
+    display: block !important;
+    visibility: visible !important;
+    height: auto !important;
+    overflow: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
   }
 </style>
-{%- endif -%}
 
 {{ 'unified-footer.css' | asset_url | stylesheet_tag }}
 
@@ -122,13 +141,13 @@
             {%- endfor -%}
           {%- else -%}
             <li class="primal-footer__link-item">
-              <a href="/pages/about" class="primal-footer__link">About</a>
+              <a href="/apps/aura/about" class="primal-footer__link">About</a>
             </li>
             <li class="primal-footer__link-item">
               <a href="/apps/aura/goto?destination=&shop={{ shop.permanent_domain }}&timestamp={{ 'now' | date: '%s' }}000" class="primal-footer__link">Membership</a>
             </li>
             <li class="primal-footer__link-item">
-              <a href="/collections/all" class="primal-footer__link">Shop</a>
+              <a href="/apps/aura/goto?destination=shop&shop={{ shop.permanent_domain }}&timestamp={{ 'now' | date: '%s' }}000" class="primal-footer__link">Shop</a>
             </li>
             <li class="primal-footer__link-item">
               <a href="/pages/contact" class="primal-footer__link">Contact</a>
@@ -164,7 +183,7 @@
               <a href="/collections/spices" class="primal-footer__link">Spices</a>
             </li>
             <li class="primal-footer__link-item">
-              <a href="/collections/bbq-sauces" class="primal-footer__link">BBQ Sauces</a>
+              <a href="/collections/bbq-sauces" class="primal-footer__link">Sauces</a>
             </li>
             <li class="primal-footer__link-item">
               <a href="/collections/knives" class="primal-footer__link">Knives</a>
