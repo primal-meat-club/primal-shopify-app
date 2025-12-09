@@ -33,7 +33,8 @@ api_version = "2025-10"
 #   unauthenticated_write_checkouts - creating carts and checkouts
 #   unauthenticated_read_selling_plans - subscription plans
 #   unauthenticated_read_product_inventory - stock levels
-scopes = "write_products,write_themes,unauthenticated_read_content,unauthenticated_read_product_listings,unauthenticated_read_product_tags,unauthenticated_read_metaobjects,unauthenticated_read_checkouts,unauthenticated_write_checkouts,unauthenticated_read_selling_plans,unauthenticated_read_product_inventory"
+#   read_online_store_navigation - navigation menus (Admin API, no caching issues)
+scopes = "write_products,write_themes,read_online_store_navigation,unauthenticated_read_content,unauthenticated_read_product_listings,unauthenticated_read_product_tags,unauthenticated_read_metaobjects,unauthenticated_read_checkouts,unauthenticated_write_checkouts,unauthenticated_read_selling_plans,unauthenticated_read_product_inventory"
 
 [auth]
 redirect_urls = [
