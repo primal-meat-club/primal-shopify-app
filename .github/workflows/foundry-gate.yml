@@ -11,6 +11,11 @@
 #   - All event data passed via env vars (no shell injection)
 #   - Unified concurrency key by branch name prevents duplicate checks
 #
+# Error handling:
+#   - gh API errors are detected and logged loudly (not swallowed)
+#   - foundry check failures are logged with exit code (state managed internally via SQLite)
+#   - Workflow itself exits 0 to avoid noisy red X on PRs (this is a trigger, not a gate)
+#
 # Requires: GitHub Actions self-hosted runner with label "foundry"
 # Setup: bash ~/.openclaw/workspace/scripts/foundry/scripts/setup-runner.sh
 
@@ -57,8 +62,6 @@ jobs:
     timeout-minutes: 5
 
     # Unified concurrency by branch name — consistent across all event types.
-    # PR events use head.ref, workflow_run uses head_branch. Both are the same
-    # branch name for the same PR, so they share the concurrency slot.
     concurrency:
       group: foundry-gate-${{ github.event.pull_request.head.ref || github.event.workflow_run.head_branch }}
       cancel-in-progress: true
@@ -79,6 +82,16 @@ jobs:
           FOUNDRY="$HOME/.openclaw/workspace/scripts/foundry/foundry"
           DB="$HOME/.openclaw/workspace/scripts/foundry/foundry.db"
 
+          # ── Preflight: verify foundry binary and gh auth ───────────
+          if [ ! -f "$FOUNDRY" ]; then
+            echo "::error::Foundry binary not found at $FOUNDRY"
+            exit 1
+          fi
+          if ! gh auth status >/dev/null 2>&1; then
+            echo "::error::gh CLI not authenticated — gate cannot query PRs"
+            exit 1
+          fi
+
           # ── Determine PR number from event ─────────────────────────
           PR=""
           BRANCH=""
@@ -89,10 +102,14 @@ jobs:
             BRANCH="$WR_HEAD_BRANCH"
 
             # Find PR for this branch — same-owner only
-            PR=$(gh pr list --repo "$REPO" --head "$BRANCH" --state open \
-              --json number,headRepositoryOwner \
-              --jq "[.[] | select(.headRepositoryOwner.login == \"$REPO_OWNER\")] | .[0].number // empty" \
-              2>/dev/null || true)
+            pr_output=""
+            if ! pr_output=$(gh pr list --repo "$REPO" --head "$BRANCH" --state open \
+              --json number,headRepositoryOwner 2>&1); then
+              echo "::warning::gh pr list failed: $pr_output"
+            else
+              PR=$(echo "$pr_output" \
+                | jq -r "[.[] | select(.headRepositoryOwner.login == \"$REPO_OWNER\")] | .[0].number // empty")
+            fi
           fi
 
           if [ -z "$PR" ]; then
@@ -119,7 +136,11 @@ jobs:
 
           if [ -z "$TASK_ID" ]; then
             echo "No active task found for PR#$PR — running full check"
-            bash "$FOUNDRY" check 2>&1 || true
+            rc=0
+            bash "$FOUNDRY" check 2>&1 || rc=$?
+            if [ "$rc" -ne 0 ]; then
+              echo "::warning::foundry check exited with code $rc (state managed internally)"
+            fi
             exit 0
           fi
 
@@ -129,4 +150,8 @@ jobs:
           sqlite3 "$DB" "INSERT INTO events (task_id, event, details) VALUES ('$(echo "$TASK_ID" | tr -cd 'a-zA-Z0-9_-')', 'gate', 'GitHub event: $EVENT_NAME PR#$PR');" 2>/dev/null || true
 
           # ── Run targeted check ─────────────────────────────────────
-          bash "$FOUNDRY" check "$TASK_ID" 2>&1 || true
+          rc=0
+          bash "$FOUNDRY" check "$TASK_ID" 2>&1 || rc=$?
+          if [ "$rc" -ne 0 ]; then
+            echo "::warning::foundry check '$TASK_ID' exited with code $rc (state managed internally)"
+          fi
