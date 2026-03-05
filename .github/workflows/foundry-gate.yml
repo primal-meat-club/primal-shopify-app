@@ -1,0 +1,112 @@
+# foundry-gate.yml — Event-driven bridge: GitHub events → local foundry check
+#
+# Runs on a self-hosted runner (Mac mini). Triggers when:
+#   1. Any CI/review workflow completes on a foundry/ branch
+#   2. A review is submitted on a foundry/ branch
+#   3. A PR with the "foundry" label receives any of the above events
+#
+# This means:
+#   - Muhammad's PRs: reviews run normally on GitHub, he fixes issues himself
+#   - Foundry agent PRs (foundry/ branch): auto-checked + auto-respawned locally
+#   - Any PR labeled "foundry": opted-in to local checking (manual or via `foundry register`)
+#
+# All evaluation logic lives in foundry's check command — the gate is
+# purely a trigger. Just: event → find task → check.
+#
+# Requires: GitHub Actions self-hosted runner with label "foundry"
+# Setup: bash ~/.openclaw/workspace/scripts/foundry/scripts/setup-runner.sh
+
+name: Foundry Gate
+
+on:
+  # Fires when any of our CI/review workflows complete
+  workflow_run:
+    workflows:
+      - "Tests & Lint"
+      - "Claude Code Review"
+      - "Codex Code Review"
+      - "Gemini Review Check"
+    types: [completed]
+
+  # Fires when a human or bot submits/dismisses a review
+  pull_request_review:
+    types: [submitted, dismissed]
+
+  # Fires when PR is closed (merged/abandoned) or labeled
+  pull_request:
+    types: [closed, labeled]
+
+jobs:
+  react:
+    # Trigger on foundry/ branches OR PRs with "foundry" label
+    if: |
+      (github.event_name == 'pull_request_review' && (
+        startsWith(github.event.pull_request.head.ref, 'foundry/') ||
+        contains(toJson(github.event.pull_request.labels), '"foundry"')
+      )) ||
+      (github.event_name == 'pull_request' && (
+        startsWith(github.event.pull_request.head.ref, 'foundry/') ||
+        contains(toJson(github.event.pull_request.labels), '"foundry"')
+      )) ||
+      (github.event_name == 'workflow_run' &&
+       startsWith(github.event.workflow_run.head_branch, 'foundry/'))
+
+    runs-on: [self-hosted, foundry]
+    timeout-minutes: 5
+
+    steps:
+      - name: Find PR and run foundry check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          FOUNDRY="$HOME/.openclaw/workspace/scripts/foundry/foundry"
+          DB="$HOME/.openclaw/workspace/scripts/foundry/foundry.db"
+          REPO="${{ github.repository }}"
+
+          # ── Determine PR number from event ─────────────────────────
+          PR=""
+          BRANCH=""
+          if [ "${{ github.event_name }}" = "pull_request_review" ] || [ "${{ github.event_name }}" = "pull_request" ]; then
+            PR="${{ github.event.pull_request.number }}"
+            BRANCH="${{ github.event.pull_request.head.ref }}"
+          elif [ "${{ github.event_name }}" = "workflow_run" ]; then
+            BRANCH="${{ github.event.workflow_run.head_branch }}"
+            PR=$(gh pr list --repo "$REPO" --head "$BRANCH" --state open --json number --jq '.[0].number // empty' 2>/dev/null || true)
+          fi
+
+          if [ -z "$PR" ]; then
+            echo "No PR found — skipping"
+            exit 0
+          fi
+
+          # ── Skip if this was just a non-foundry label being added ──
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.event.action }}" = "labeled" ]; then
+            LABEL="${{ github.event.label.name }}"
+            if [ "$LABEL" != "foundry" ]; then
+              echo "Label '$LABEL' added — not 'foundry', skipping"
+              exit 0
+            fi
+            echo "PR#$PR labeled 'foundry' — registering for local checks"
+          fi
+
+          echo "Gate triggered: $REPO PR#$PR branch=$BRANCH (event: ${{ github.event_name }})"
+
+          # ── Look up task ID from local SQLite registry ─────────────
+          TASK_ID=""
+          if [ -f "$DB" ]; then
+            TASK_ID=$(sqlite3 "$DB" "SELECT id FROM tasks WHERE (pr LIKE '%/pull/$PR' OR pr LIKE '%/$PR') AND status NOT IN ('merged','done','done-no-pr','killed','closed') LIMIT 1;" 2>/dev/null || true)
+          fi
+
+          if [ -z "$TASK_ID" ]; then
+            echo "No active task found for PR#$PR — running full check"
+            bash "$FOUNDRY" check 2>&1 || true
+            exit 0
+          fi
+
+          echo "Matched task: $TASK_ID"
+
+          # ── Log gate event in registry ─────────────────────────────
+          sqlite3 "$DB" "INSERT INTO events (task_id, event, details) VALUES ('$TASK_ID', 'gate', 'GitHub event: ${{ github.event_name }} PR#$PR');" 2>/dev/null || true
+
+          # ── Run targeted check (handles state machine + notifications) ──
+          bash "$FOUNDRY" check "$TASK_ID" 2>&1 || true
