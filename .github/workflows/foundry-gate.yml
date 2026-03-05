@@ -82,13 +82,9 @@ jobs:
           FOUNDRY="$HOME/.openclaw/workspace/scripts/foundry/foundry"
           DB="$HOME/.openclaw/workspace/scripts/foundry/foundry.db"
 
-          # ── Preflight: verify foundry binary and gh auth ───────────
+          # ── Preflight: verify foundry binary exists ──────────────
           if [ ! -f "$FOUNDRY" ]; then
             echo "::error::Foundry binary not found at $FOUNDRY"
-            exit 1
-          fi
-          if ! gh auth status >/dev/null 2>&1; then
-            echo "::error::gh CLI not authenticated — gate cannot query PRs"
             exit 1
           fi
 
@@ -101,14 +97,20 @@ jobs:
           elif [ "$EVENT_NAME" = "workflow_run" ]; then
             BRANCH="$WR_HEAD_BRANCH"
 
-            # Find PR for this branch — same-owner only
+            # Verify gh auth before API calls (only needed for workflow_run path)
+            if ! gh auth status >/dev/null 2>&1; then
+              echo "::error::gh CLI not authenticated — cannot resolve PR for workflow_run"
+              exit 1
+            fi
+
+            # Find PR for this branch — same-owner only (uses gh --jq, no external jq needed)
             pr_output=""
             if ! pr_output=$(gh pr list --repo "$REPO" --head "$BRANCH" --state open \
-              --json number,headRepositoryOwner 2>&1); then
+              --json number,headRepositoryOwner \
+              --jq "[.[] | select(.headRepositoryOwner.login == \"$REPO_OWNER\")] | .[0].number // empty" 2>&1); then
               echo "::warning::gh pr list failed: $pr_output"
             else
-              PR=$(echo "$pr_output" \
-                | jq -r "[.[] | select(.headRepositoryOwner.login == \"$REPO_OWNER\")] | .[0].number // empty")
+              PR="$pr_output"
             fi
           fi
 
