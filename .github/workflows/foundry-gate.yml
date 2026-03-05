@@ -36,6 +36,10 @@ on:
   pull_request:
     types: [closed, labeled]
 
+permissions:
+  pull-requests: read
+  contents: read
+
 jobs:
   react:
     # Gate: reject forks + filter to foundry-related events BEFORE runner allocation.
