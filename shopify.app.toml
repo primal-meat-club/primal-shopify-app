@@ -24,6 +24,14 @@ api_version = "2025-10"
 # Admin API:
 #   write_products - for product management
 #   write_themes - for theme deployment (CI/CD)
+#   read_own_subscription_contracts - fetch subscription contracts for member dashboard
+#   write_own_subscription_contracts - pause/skip/cancel/create contracts via backend
+#   read_purchase_options - read selling plans attached to products
+#   write_purchase_options - programmatically create Selling Plan Groups from our backend
+#   read_customer_payment_methods - retrieve payment_method_id required to attach a payment
+#                                   method to subscription contracts (without it, contracts
+#                                   created via subscriptionDraftCommit cannot be billed)
+#   read_online_store_navigation - navigation menus (Admin API, no caching issues)
 # Storefront API (unauthenticated scopes - inherited by Storefront Access Tokens):
 #   unauthenticated_read_content - menus, pages, blog articles
 #   unauthenticated_read_product_listings - products, collections, shop info
@@ -33,8 +41,24 @@ api_version = "2025-10"
 #   unauthenticated_write_checkouts - creating carts and checkouts
 #   unauthenticated_read_selling_plans - subscription plans
 #   unauthenticated_read_product_inventory - stock levels
-#   read_online_store_navigation - navigation menus (Admin API, no caching issues)
-scopes = "write_products,write_themes,read_online_store_navigation,unauthenticated_read_content,unauthenticated_read_product_listings,unauthenticated_read_product_tags,unauthenticated_read_metaobjects,unauthenticated_read_checkouts,unauthenticated_write_checkouts,unauthenticated_read_selling_plans,unauthenticated_read_product_inventory"
+scopes = [
+  "write_products",
+  "write_themes",
+  "read_online_store_navigation",
+  "read_own_subscription_contracts",
+  "write_own_subscription_contracts",
+  "read_purchase_options",
+  "write_purchase_options",
+  "read_customer_payment_methods",
+  "unauthenticated_read_content",
+  "unauthenticated_read_product_listings",
+  "unauthenticated_read_product_tags",
+  "unauthenticated_read_metaobjects",
+  "unauthenticated_read_checkouts",
+  "unauthenticated_write_checkouts",
+  "unauthenticated_read_selling_plans",
+  "unauthenticated_read_product_inventory"
+]
 
 [auth]
 redirect_urls = [
