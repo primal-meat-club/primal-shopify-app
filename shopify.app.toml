@@ -41,24 +41,7 @@ api_version = "2025-10"
 #   unauthenticated_write_checkouts - creating carts and checkouts
 #   unauthenticated_read_selling_plans - subscription plans
 #   unauthenticated_read_product_inventory - stock levels
-scopes = [
-  "write_products",
-  "write_themes",
-  "read_online_store_navigation",
-  "read_own_subscription_contracts",
-  "write_own_subscription_contracts",
-  "read_purchase_options",
-  "write_purchase_options",
-  "read_customer_payment_methods",
-  "unauthenticated_read_content",
-  "unauthenticated_read_product_listings",
-  "unauthenticated_read_product_tags",
-  "unauthenticated_read_metaobjects",
-  "unauthenticated_read_checkouts",
-  "unauthenticated_write_checkouts",
-  "unauthenticated_read_selling_plans",
-  "unauthenticated_read_product_inventory"
-]
+scopes = "write_products,write_themes,read_online_store_navigation,read_own_subscription_contracts,write_own_subscription_contracts,read_purchase_options,write_purchase_options,read_customer_payment_methods,unauthenticated_read_content,unauthenticated_read_product_listings,unauthenticated_read_product_tags,unauthenticated_read_metaobjects,unauthenticated_read_checkouts,unauthenticated_write_checkouts,unauthenticated_read_selling_plans,unauthenticated_read_product_inventory"
 
 [auth]
 redirect_urls = [
