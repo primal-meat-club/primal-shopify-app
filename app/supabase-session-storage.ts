@@ -1,6 +1,21 @@
-import { Session } from "@shopify/shopify-api";
+import { Session, shopifyApi, ApiVersion } from "@shopify/shopify-api";
 import { SessionStorage } from "@shopify/shopify-app-session-storage";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+
+// GraphQL mutation to create a Storefront Access Token
+const STOREFRONT_TOKEN_MUTATION = `
+  mutation storefrontAccessTokenCreate($input: StorefrontAccessTokenInput!) {
+    storefrontAccessTokenCreate(input: $input) {
+      storefrontAccessToken {
+        accessToken
+      }
+      userErrors {
+        field
+        message
+      }
+    }
+  }
+`;
 
 /**
  * Supabase-based session storage for Shopify OAuth tokens.
@@ -20,12 +35,101 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
  */
 export class SupabaseSessionStorage implements SessionStorage {
   private supabase: SupabaseClient;
+  private apiKey: string;
+  private apiSecret: string;
 
   constructor(supabaseUrl: string, supabaseServiceKey: string) {
     this.supabase = createClient(supabaseUrl, supabaseServiceKey);
+    this.apiKey = process.env.SHOPIFY_API_KEY || "";
+    this.apiSecret = process.env.SHOPIFY_API_SECRET || "";
+  }
+
+  /**
+   * Create a Storefront Access Token using the Admin API
+   */
+  private async createStorefrontToken(session: Session): Promise<string | null> {
+    if (!session.accessToken) {
+      console.log("[SupabaseSessionStorage] No access token, skipping Storefront token creation");
+      return null;
+    }
+
+    try {
+      const shopify = shopifyApi({
+        apiKey: this.apiKey,
+        apiSecretKey: this.apiSecret,
+        scopes: [],
+        hostName: session.shop,
+        apiVersion: ApiVersion.October25,
+        isEmbeddedApp: true,
+      });
+
+      const client = new shopify.clients.Graphql({ session });
+
+      const response = await client.request(STOREFRONT_TOKEN_MUTATION, {
+        variables: {
+          input: {
+            title: "Aura Shopping Cart",
+          },
+        },
+      });
+
+      const data = response.data as {
+        storefrontAccessTokenCreate: {
+          storefrontAccessToken: { accessToken: string } | null;
+          userErrors: Array<{ field: string; message: string }>;
+        };
+      };
+
+      if (data.storefrontAccessTokenCreate.userErrors.length > 0) {
+        console.error("[SupabaseSessionStorage] Storefront token creation errors:",
+          data.storefrontAccessTokenCreate.userErrors);
+        return null;
+      }
+
+      const token = data.storefrontAccessTokenCreate.storefrontAccessToken?.accessToken;
+      if (token) {
+        console.log("[SupabaseSessionStorage] Created Storefront Access Token");
+        return token;
+      }
+
+      return null;
+    } catch (error) {
+      console.error("[SupabaseSessionStorage] Failed to create Storefront token:", error);
+      return null;
+    }
   }
 
   async storeSession(session: Session): Promise<boolean> {
+    console.log(`[SupabaseSessionStorage] Storing session:`, {
+      id: session.id,
+      shop: session.shop,
+      hasToken: !!session.accessToken,
+      isOnline: session.isOnline,
+      scope: session.scope,
+    });
+
+    // First, check if we already have a Storefront token for this shop
+    let storefrontToken: string | null = null;
+
+    if (session.accessToken && !session.isOnline) {
+      // Only create Storefront token for offline sessions (persistent)
+      const { data: existingSession } = await this.supabase
+        .from("shopify_sessions")
+        .select("storefront_access_token")
+        .eq("shop", session.shop)
+        .not("storefront_access_token", "is", null)
+        .limit(1)
+        .single();
+
+      if (existingSession?.storefront_access_token) {
+        console.log("[SupabaseSessionStorage] Reusing existing Storefront token");
+        storefrontToken = existingSession.storefront_access_token;
+      } else {
+        // Create new Storefront token
+        storefrontToken = await this.createStorefrontToken(session);
+      }
+    }
+
     const sessionData = {
       id: session.id,
       shop: session.shop,
@@ -36,15 +140,8 @@ export class SupabaseSessionStorage implements SessionStorage {
         ? new Date(session.expires).toISOString()
         : null,
       access_token: session.accessToken,
+      storefront_access_token: storefrontToken,
     };
-
-    console.log(`[SupabaseSessionStorage] Storing session:`, {
-      id: session.id,
-      shop: session.shop,
-      hasToken: !!session.accessToken,
-      isOnline: session.isOnline,
-      scope: session.scope,
-    });
 
     const { error } = await this.supabase
       .from("shopify_sessions")
@@ -60,7 +157,7 @@ export class SupabaseSessionStorage implements SessionStorage {
       return false;
     }
 
-    console.log(`[SupabaseSessionStorage] Successfully stored session for shop: ${session.shop}, id: ${session.id}`);
+    console.log(`[SupabaseSessionStorage] Successfully stored session for shop: ${session.shop}, id: ${session.id}, hasStorefrontToken: ${!!storefrontToken}`);
     return true;
   }
 
