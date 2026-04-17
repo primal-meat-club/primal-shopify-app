@@ -37,6 +37,13 @@ api_version = "2025-10"
 #                 (also unlocks order data in subscription analyzer / CAPI attribution)
 #   read_inventory - required for inventory_levels/update webhook
 #   read_online_store_navigation - navigation menus (Admin API, no caching issues)
+#   Broad read-only scopes (added 2026-04-17): analytics, fulfillment orders,
+#   content, discounts/price rules, draft orders, files, gift cards, locales,
+#   locations, marketing events, products/publications/listings, reports,
+#   resource feedbacks, returns, script tags, Shopify Payments
+#   (accounts/disputes/payouts), themes, translations. Breadth lets the
+#   backend introspect without requiring future scope-deploy + token-regrant
+#   cycles for each new integration.
 # Storefront API (unauthenticated scopes - inherited by Storefront Access Tokens):
 #   unauthenticated_read_content - menus, pages, blog articles
 #   unauthenticated_read_product_listings - products, collections, shop info
@@ -46,7 +53,7 @@ api_version = "2025-10"
 #   unauthenticated_write_checkouts - creating carts and checkouts
 #   unauthenticated_read_selling_plans - subscription plans
 #   unauthenticated_read_product_inventory - stock levels
-scopes = "write_products,write_themes,write_discounts,read_online_store_navigation,read_own_subscription_contracts,write_own_subscription_contracts,read_purchase_options,write_purchase_options,read_customer_payment_methods,read_customers,read_orders,read_inventory,read_shipping,write_shipping,unauthenticated_read_content,unauthenticated_read_product_listings,unauthenticated_read_product_tags,unauthenticated_read_metaobjects,unauthenticated_read_checkouts,unauthenticated_write_checkouts,unauthenticated_read_selling_plans,unauthenticated_read_product_inventory"
+scopes = "write_products,write_themes,write_discounts,read_online_store_navigation,read_own_subscription_contracts,write_own_subscription_contracts,read_purchase_options,write_purchase_options,read_customer_payment_methods,read_customers,read_orders,read_inventory,read_shipping,write_shipping,read_analytics,read_assigned_fulfillment_orders,read_content,read_discounts,read_draft_orders,read_files,read_fulfillments,read_gift_cards,read_locales,read_locations,read_marketing_events,read_merchant_managed_fulfillment_orders,read_price_rules,read_product_listings,read_products,read_publications,read_reports,read_resource_feedbacks,read_returns,read_script_tags,read_shopify_payments_accounts,read_shopify_payments_disputes,read_shopify_payments_payouts,read_themes,read_third_party_fulfillment_orders,read_translations,unauthenticated_read_content,unauthenticated_read_product_listings,unauthenticated_read_product_tags,unauthenticated_read_metaobjects,unauthenticated_read_checkouts,unauthenticated_write_checkouts,unauthenticated_read_selling_plans,unauthenticated_read_product_inventory"
 
 [auth]
 redirect_urls = [
