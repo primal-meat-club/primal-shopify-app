@@ -11,7 +11,7 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
  *
  * Luca is the OAuth bridge — it provides scopes, tokens, webhooks, and
  * the app proxy. All actual operator UI (members, leads, subscriptions,
- * Aura/Magnus configuration) lives in the Vercel-deployed admin app
+ * Coach Chris configuration) lives in the Vercel-deployed admin app
  * keyed off the shop domain. This embedded admin only needs to point
  * the operator to the right place.
  */
@@ -46,7 +46,7 @@ export default function Index() {
         <s-paragraph>
           Luca handles the Shopify OAuth bridge, webhooks, and app proxy
           for <s-text>{shop}</s-text>. All operator tools — members,
-          leads, subscriptions, Aura/Magnus configuration — live in the
+          leads, subscriptions, Coach Chris configuration — live in the
           main admin.
         </s-paragraph>
         <s-paragraph>
