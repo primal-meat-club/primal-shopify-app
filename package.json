@@ -2,6 +2,7 @@
   "name": "primal-shopify-app",
   "private": true,
   "scripts": {
+    "prebuild": "node scripts/check-env.mjs",
     "build": "react-router build",
     "dev": "shopify app dev",
     "config:link": "shopify app config link",
