@@ -9,11 +9,11 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 /**
  * Map a Shopify shop domain to its corresponding management URL.
  *
- * Luca is the OAuth bridge — it provides scopes, tokens, webhooks, and
- * the app proxy. All actual operator UI (members, leads, subscriptions,
- * Coach Chris configuration) lives in the Vercel-deployed admin app
- * keyed off the shop domain. This embedded admin only needs to point
- * the operator to the right place.
+ * This embedded app provides the Shopify OAuth bridge, scopes, tokens,
+ * webhooks, and app proxy. All actual operator UI (members, leads,
+ * subscriptions, Coach Chris configuration) lives in the Luca admin
+ * app keyed off the shop domain. This embedded admin only needs to
+ * point the operator to the right place.
  */
 function adminUrlForShop(shop: string): { label: string; url: string } {
   // Production Primal 500 install
@@ -44,10 +44,10 @@ export default function Index() {
     <s-page heading="Luca AI Shopping Assistant">
       <s-section heading="Manage this app">
         <s-paragraph>
-          Luca handles the Shopify OAuth bridge, webhooks, and app proxy
-          for <s-text>{shop}</s-text>. All operator tools — members,
+          This app handles the Shopify OAuth bridge, webhooks, and app
+          proxy for <s-text>{shop}</s-text>. All operator tools — members,
           leads, subscriptions, Coach Chris configuration — live in the
-          main admin.
+          Luca admin.
         </s-paragraph>
         <s-paragraph>
           <s-link href={adminUrl} target="_top">
