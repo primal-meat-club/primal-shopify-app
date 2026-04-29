@@ -20,6 +20,10 @@ const REQUIRED = [
   "SCOPES",
   "SUPABASE_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
+  // BACKEND_URL is consumed by app routes that proxy to the FastAPI
+  // backend. Missing it produces runtime fetch failures, not build
+  // failures (per Gemini review on PR #9).
+  "BACKEND_URL",
 ];
 
 const SKIP_REASONS = [];
@@ -42,7 +46,10 @@ if (SKIP_REASONS.length > 0) {
 
 const missing = REQUIRED.filter((name) => {
   const v = process.env[name];
-  return v === undefined || v === "";
+  // Treat whitespace-only as missing — common Vercel-dashboard mishap
+  // when copy-pasting values picks up a trailing newline or space and
+  // the runtime check then accepts a blank string. (Gemini review.)
+  return v === undefined || v.trim() === "";
 });
 
 if (missing.length > 0) {
