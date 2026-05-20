@@ -102,6 +102,19 @@ jobs:
               materially compromise an architectural pattern. Maintainability,
               naming, performance polish, refactor opportunities, type-safety
               nits, and defensive-coding suggestions are **never** blockers.
+
+              **Always-blocker categories** (regardless of how small the diff
+              looks — these override the "blockers are rare" default):
+              - Security vulnerabilities: auth/authorization gaps, injection
+                (SQL/NoSQL/command/XSS), path traversal, secret leakage,
+                privilege escalation, race conditions in auth flow.
+              - Customer-visible legal/compliance copy bugs: TCPA, GDPR,
+                CCPA — including consent text mismatches, missing consent
+                gating, malformed disclosures or required-disclosure text.
+              - CI breakage: invalid workflow syntax, references to
+                non-existent actions or versions, missing required secrets.
+              - Empty PRs or PRs whose code changes do not match the stated
+                intent.
             - **FOLLOW-UP** — everything else. Polish, doc gaps, nice-to-have
               hardening, tracking-tickets for stub-shaped code, etc.
 
