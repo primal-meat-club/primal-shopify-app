@@ -53,7 +53,7 @@ jobs:
             1.  **Net Positive > Perfection:** Your primary objective is to determine if the change *definitively improves* the overall code health. Do not block on imperfections if the change is a net improvement.
             2.  **Focus on Substance:** Assume automated CI (Linters, Formatters, basic tests) has passed. Focus your analysis strictly on architecture, design, business logic, security, and complex interactions. Do not comment on style or formatting.
             3.  **Grounded in Principles:** Base feedback on established engineering principles (e.g., SOLID, DRY) and technical facts, not opinions.
-            4.  **Signal Intent:** Prefix minor, optional polish suggestions with "**Nit:**".
+            4.  **Terminal Approval Discipline:** A review is a terminal signal — APPROVED means ship, CHANGES_REQUESTED means block. There is no "approve with nits" path. Non-blocking findings are filed as GitHub Issues, never embedded in the review body. Every additional review round costs tokens and developer cycles to address findings that themselves seed the next round's findings; this discipline breaks that recursion.
 
             ### Hierarchical Review Checklist
 
@@ -89,22 +89,49 @@ jobs:
                 - Frontend: Does the change negatively impact bundle size or Core Web Vitals?
                 - API Design: Is the API contract clear, consistent, and robust in error handling?
 
-            ### Output Guidelines
+            ### Output Guidelines — Terminal Approval Discipline
 
-            Provide specific, actionable feedback. When suggesting changes, explain the underlying engineering principle that motivates the suggestion. Be constructive and concise.
+            Reviews are terminal. The point of this workflow is to converge on
+            ship, not to iteratively polish the diff. Use the repository's
+            CLAUDE.md for guidance on style and conventions.
 
-            Use the repository's CLAUDE.md for guidance on style and conventions.
+            **Classify every finding into exactly one of two buckets:**
 
-            **CRITICAL: Use `gh pr review` to submit your review, NOT `gh pr comment`.**
+            - **BLOCKER** — shipping the current diff would cause a production
+              incident, security vulnerability, clear correctness bug, or
+              materially compromise an architectural pattern. Maintainability,
+              naming, performance polish, refactor opportunities, type-safety
+              nits, and defensive-coding suggestions are **never** blockers.
+            - **FOLLOW-UP** — everything else. Polish, doc gaps, nice-to-have
+              hardening, tracking-tickets for stub-shaped code, etc.
 
-            After completing your analysis, you MUST submit exactly ONE formal review using `gh pr review`. NEVER use `--comment` — it does not register as a proper review verdict.
+            **For each FOLLOW-UP finding, before submitting the review:** file
+            a GitHub Issue via `gh issue create` with:
+            - Title: one-line finding (`tcpaConsentVersion should be a strict literal`)
+            - Body: file path + line + one-paragraph explanation + suggested approach
+            - Labels: `tech-debt` and/or `follow-up`
+            - Do NOT mention the issue in the PR review body.
 
-            - If the change is a NET POSITIVE (even with minor nits): Run `gh pr review ${{ github.event.pull_request.number }} --approve --body "Your feedback summary"`
-            - If you found critical issues that MUST be fixed before merge: Run `gh pr review ${{ github.event.pull_request.number }} --request-changes --body "Your feedback summary"`
+            **Submit exactly ONE review via `gh pr review`** (never `gh pr comment`):
 
-            IMPORTANT: You MUST choose either --approve or --request-changes. There is no third option. Nits and minor suggestions go in --approve with the feedback in the body. Only use --request-changes for blocking issues (security, correctness, architecture).
+            - **If there are NO BLOCKERS:**
+              `gh pr review ${{ github.event.pull_request.number }} --approve --body "<verdict + one sentence>"`
+              Body MUST be exactly:
+              ```
+              ## Verdict: Approve ✓
+              <One sentence describing the change and why it ships.>
+              ```
+              **No `### Feedback` section. No nits. No tracking items.** Those
+              live in the issues you just filed.
 
-            Submit exactly ONE review, then STOP.
+            - **If there ARE BLOCKERS:**
+              `gh pr review ${{ github.event.pull_request.number }} --request-changes --body "..."`
+              Body has `## Verdict: Changes Requested ✗`, one-sentence summary,
+              then `### Blockers` with numbered items (file path + line +
+              fix sketch). Do NOT mix follow-ups into the blocker list —
+              file those as issues separately.
+
+            Submit the review, then STOP. Do not engage further with the PR.
 
           claude_args: '--model claude-opus-4-6 --allowed-tools "Bash(gh issue view:*),Bash(gh issue create:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr review:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr comment:*),Bash(gh pr checks:*)"'
 
