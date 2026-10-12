@@ -9,9 +9,12 @@ embedded = true
 automatically_update_urls_on_dev = true
 
 [webhooks]
-# Every app-owned webhook subscription (including the ones aura-shopify's backend registers)
-# inherits this version. 2025-10 is retired on 2026-10-16 and Shopify then delivers 2026-01
-# payloads. Move to 2026-07 only after the next aura release is live and its handlers are
+# App-specific subscriptions use this version. aura-shopify's REST-registered subscriptions
+# inherit it too: on staging (6 Oct 2026) they delivered 2025-10 payloads although the backend
+# registers them through the 2026-07 Admin URL. Shopify's docs disagree about GraphQL-created
+# ones (the backend's METAOBJECTS_* etc.); none has delivered yet, so read their
+# X-Shopify-API-Version header. 2025-10 is retired on 2026-10-16; Shopify then falls forward
+# to 2026-01. Move to 2026-07 only after the next aura release is live and its handlers are
 # validated against 2026-07 payloads (that version removes checkout `id` and order `checkout_id`).
 api_version = "2025-10"
 
