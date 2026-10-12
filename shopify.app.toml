@@ -28,9 +28,9 @@ api_version = "2025-10"
 
 [access_scopes]
 # WARNING: this one app config serves BOTH stores (production primal500-dev and staging
-# aura-ai-shopping-assistant). A push to main deploys it to both via deploy.yml. A new
-# scope only takes effect after the merchant approves it by opening the app in each
-# store's admin; deploying a config that drops a scope removes it from both stores.
+# aura-ai-shopping-assistant). A push to main deploys it to both via deploy.yml. A scope
+# change (added or dropped) only takes effect in a store once the merchant opens the app
+# in that store's admin; until then the store keeps its current grant.
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
 # Admin API:
 #   write_products - for product management
