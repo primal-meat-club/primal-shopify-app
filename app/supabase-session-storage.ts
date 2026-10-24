@@ -1,6 +1,7 @@
 import { Session, shopifyApi, ApiVersion } from "@shopify/shopify-api";
 import { SessionStorage } from "@shopify/shopify-app-session-storage";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { createSessionFetch } from "./session-generation.server";
 
 // GraphQL mutation to create a Storefront Access Token
 const STOREFRONT_TOKEN_MUTATION = `
@@ -39,9 +40,11 @@ export class SupabaseSessionStorage implements SessionStorage {
   private apiSecret: string;
 
   constructor(supabaseUrl: string, supabaseServiceKey: string) {
-    this.supabase = createClient(supabaseUrl, supabaseServiceKey);
     this.apiKey = process.env.SHOPIFY_API_KEY || "";
     this.apiSecret = process.env.SHOPIFY_API_SECRET || "";
+    this.supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      global: { fetch: createSessionFetch(supabaseUrl, this.apiKey, this.apiSecret) },
+    });
   }
 
   /**
