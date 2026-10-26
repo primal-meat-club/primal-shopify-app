@@ -95,6 +95,34 @@ test("binding errors name failing fields without exposing configuration values",
   assert.equal(calls, 0);
 });
 
+test("locked Supabase SDK initializes with a closed transport and reports the binding failure", async () => {
+  const originalFetch = globalThis.fetch;
+  let networkCalls = 0;
+  let transportCalls = 0;
+  globalThis.fetch = async () => { networkCalls++; throw new Error("unmocked network is forbidden"); };
+  try {
+    const { createClient } = await import("@supabase/supabase-js");
+    const wrapped = createSessionFetch(origin, client, "", async () => {
+      transportCalls++;
+      throw new Error("invalid binding reached transport");
+    });
+    let storage;
+    assert.doesNotThrow(() => {
+      storage = createClient(origin, "synthetic-service-key", {
+        global: { fetch: wrapped },
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      });
+    });
+    const { data, error } = await storage.from("shopify_sessions").select("id").limit(1);
+    assert.equal(data, null);
+    assert.match(error.message, /binding is invalid: SHOPIFY_API_SECRET/);
+    assert.equal(transportCalls, 0);
+    assert.equal(networkCalls, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("unexpected mutation destination or method cannot receive proof", async () => {
   let calls = 0;
   const wrapped = createSessionFetch(origin, client, "synthetic-new-secret", async () => { calls++; });
