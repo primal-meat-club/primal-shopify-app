@@ -1,0 +1,137 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { createSessionFetch } from "../app/session-generation.server.ts";
+
+const origin = "https://rigrcbknmsgjesqggdfb.supabase.co";
+const client = "565e7c02bd2f63f9f5c424eac4ea4e20";
+const header = "x-primal-luca-generation";
+// Independent Python HMAC vector for the documented SQL-guard context.
+const expected = "babe197d0ad6e3a593680ee72e3eefd4412a4de864a76850d479b0015358eb38";
+
+for (const [operation, method, query, body] of [
+  ["storeSession", "POST", "on_conflict=id", '{"id":"offline_primal500-dev.myshopify.com","is_online":false}'],
+  ["deleteSession", "DELETE", "id=eq.offline_primal500-dev.myshopify.com", undefined],
+  ["deleteSessions", "DELETE", "id=in.(offline_primal500-dev.myshopify.com,offline_aura-ai-shopping-assistant.myshopify.com)", undefined],
+]) {
+  test(`${operation} sends fixed proof and preserves REST request`, async () => {
+    let calls = 0;
+    const wrapped = createSessionFetch(origin, client, "synthetic-new-secret", async (request) => {
+      calls++;
+      assert.equal(request.url, `${origin}/rest/v1/shopify_sessions?${query}`);
+      assert.equal(request.method, method);
+      assert.equal(request.headers.get(header), expected);
+      assert.equal(request.headers.get("authorization"), "Bearer synthetic-service-key");
+      assert.equal(request.headers.get("prefer"), "resolution=merge-duplicates");
+      assert.equal(request.redirect, "error");
+      assert.equal(await request.text(), body ?? "");
+      return new Response(null, { status: 204 });
+    });
+    const response = await wrapped(`${origin}/rest/v1/shopify_sessions?${query}`, {
+      method, body,
+      headers: { [header]: "caller-supplied-forgery", authorization: "Bearer synthetic-service-key", prefer: "resolution=merge-duplicates" },
+    });
+    assert.equal(response.status, 204);
+    assert.equal(calls, 1);
+  });
+}
+
+test("reads never carry generation proof", async () => {
+  const wrapped = createSessionFetch(origin, client, "synthetic-new-secret", async (request) => {
+    assert.equal(request.headers.get(header), null);
+    return new Response("[]");
+  });
+  await wrapped(new Request(`${origin}/rest/v1/shopify_sessions?select=*&id=eq.synthetic`, {
+    headers: { [header]: "caller-supplied-forgery" },
+  }));
+});
+
+test("old secret cannot produce accepted new generation", async () => {
+  const wrapped = createSessionFetch(origin, client, "synthetic-old-secret", async (request) => {
+    assert.notEqual(request.headers.get(header), expected);
+    return new Response(null, { status: 403 });
+  });
+  assert.equal((await wrapped(`${origin}/rest/v1/shopify_sessions`, { method: "DELETE" })).status, 403);
+});
+
+test("invalid binding permits initialization but denies reads and writes before transport", async () => {
+  let calls = 0;
+  const noTransport = async () => { calls++; throw new Error("unexpected transport"); };
+  for (const [url, id, key, field] of [
+    ["https://other.supabase.co", client, "synthetic", "SUPABASE_URL"],
+    [origin, "other-client", "synthetic", "SHOPIFY_API_KEY"],
+    [origin, client, "", "SHOPIFY_API_SECRET"],
+    ["not a valid URL", client, "synthetic", "SUPABASE_URL"],
+    [`${origin}/rest/v1`, client, "synthetic", "SUPABASE_URL"],
+    [`${origin}?redirect=other`, client, "synthetic", "SUPABASE_URL"],
+    [`${origin}#fragment`, client, "synthetic", "SUPABASE_URL"],
+  ]) {
+    let wrapped;
+    assert.doesNotThrow(() => { wrapped = createSessionFetch(url, id, key, noTransport); });
+    for (const method of ["GET", "HEAD", "POST", "DELETE"]) {
+      await assert.rejects(wrapped(`${origin}/rest/v1/shopify_sessions`, {
+        method, headers: { authorization: "Bearer synthetic-service-key", [header]: "forged" },
+      }), new RegExp(`binding is invalid: ${field}`));
+    }
+  }
+  assert.equal(calls, 0);
+});
+
+test("binding errors name failing fields without exposing configuration values", async () => {
+  let calls = 0;
+  const wrapped = createSessionFetch(
+    "https://username:private-password@other.supabase.co/private-path",
+    "private-wrong-client", "",
+    async () => { calls++; throw new Error("unexpected transport"); },
+  );
+  await assert.rejects(wrapped(`${origin}/rest/v1/shopify_sessions`), error => {
+    for (const field of ["SHOPIFY_API_KEY", "SHOPIFY_API_SECRET", "SUPABASE_URL"]) {
+      assert.ok(error.message.includes(field));
+    }
+    for (const value of ["username", "private-password", "other.supabase.co", "private-path", "private-wrong-client"]) {
+      assert.equal(error.message.includes(value), false);
+    }
+    return true;
+  });
+  assert.equal(calls, 0);
+});
+
+test("locked Supabase SDK initializes with a closed transport and reports the binding failure", async () => {
+  const originalFetch = globalThis.fetch;
+  let networkCalls = 0;
+  let transportCalls = 0;
+  globalThis.fetch = async () => { networkCalls++; throw new Error("unmocked network is forbidden"); };
+  try {
+    const { createClient } = await import("@supabase/supabase-js");
+    const wrapped = createSessionFetch(origin, client, "", async () => {
+      transportCalls++;
+      throw new Error("invalid binding reached transport");
+    });
+    let storage;
+    assert.doesNotThrow(() => {
+      storage = createClient(origin, "synthetic-service-key", {
+        global: { fetch: wrapped },
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      });
+    });
+    const { data, error } = await storage.from("shopify_sessions").select("id").limit(1);
+    assert.equal(data, null);
+    assert.match(error.message, /binding is invalid: SHOPIFY_API_SECRET/);
+    assert.equal(transportCalls, 0);
+    assert.equal(networkCalls, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("unexpected mutation destination or method cannot receive proof", async () => {
+  let calls = 0;
+  const wrapped = createSessionFetch(origin, client, "synthetic-new-secret", async () => { calls++; });
+  for (const [url, method] of [
+    ["https://other.supabase.co/rest/v1/shopify_sessions", "POST"],
+    [`${origin}/rest/v1/another_table`, "POST"],
+    [`${origin}/rest/v1/rpc/session_writer`, "POST"],
+    [`${origin}/rest/v1/shopify_sessions`, "PATCH"],
+    [`${origin}/rest/v1/shopify_sessions#fragment`, "DELETE"],
+  ]) await assert.rejects(wrapped(url, { method }), /Unexpected Luca/);
+  assert.equal(calls, 0);
+});

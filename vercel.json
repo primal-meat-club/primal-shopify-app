@@ -1,5 +1,10 @@
 {
   "buildCommand": "npm run build",
   "installCommand": "npm install",
-  "outputDirectory": "build"
+  "outputDirectory": "build",
+  "git": {
+    "deploymentEnabled": {
+      "fix/luca-session-generation": false
+    }
+  }
 }
