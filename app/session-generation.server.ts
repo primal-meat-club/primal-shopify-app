@@ -20,13 +20,26 @@ export function createSessionFetch(
   apiSecret: string,
   transport: typeof fetch = fetch,
 ): typeof fetch {
-  const configured = new URL(supabaseUrl);
+  const invalid: string[] = [];
+  if (apiKey !== CLIENT_ID) invalid.push("SHOPIFY_API_KEY");
+  if (!apiSecret) invalid.push("SHOPIFY_API_SECRET");
+  let configured: URL | undefined;
+  try {
+    configured = new URL(supabaseUrl);
+  } catch {
+    // Report the configuration field, never a URL that may contain credentials.
+  }
   if (
-    apiKey !== CLIENT_ID || !apiSecret ||
+    !configured ||
     configured.origin !== ORIGIN || configured.pathname !== "/" ||
     configured.username || configured.password || configured.search || configured.hash
   ) {
-    throw new Error("Luca session writer binding is invalid");
+    invalid.push("SUPABASE_URL");
+  }
+  if (invalid.length) {
+    // Allow module initialization, while denying every data request before transport.
+    const message = `Luca session writer binding is invalid: ${invalid.join(", ")}`;
+    return async () => { throw new Error(message); };
   }
   const proof = createHmac("sha256", apiSecret).update(CONTEXT, "utf8").digest("hex");
   return async (input, init) => {

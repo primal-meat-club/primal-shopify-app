@@ -53,14 +53,46 @@ test("old secret cannot produce accepted new generation", async () => {
   assert.equal((await wrapped(`${origin}/rest/v1/shopify_sessions`, { method: "DELETE" })).status, 403);
 });
 
-test("wrong project/client or missing key fails before transport", () => {
-  const noTransport = () => { throw new Error("unexpected transport"); };
-  for (const [url, id, key] of [
-    ["https://other.supabase.co", client, "synthetic"],
-    [origin, "other-client", "synthetic"], [origin, client, ""],
-    [`${origin}/rest/v1`, client, "synthetic"],
-    [`${origin}?redirect=other`, client, "synthetic"],
-  ]) assert.throws(() => createSessionFetch(url, id, key, noTransport), /binding is invalid/);
+test("invalid binding permits initialization but denies reads and writes before transport", async () => {
+  let calls = 0;
+  const noTransport = async () => { calls++; throw new Error("unexpected transport"); };
+  for (const [url, id, key, field] of [
+    ["https://other.supabase.co", client, "synthetic", "SUPABASE_URL"],
+    [origin, "other-client", "synthetic", "SHOPIFY_API_KEY"],
+    [origin, client, "", "SHOPIFY_API_SECRET"],
+    ["not a valid URL", client, "synthetic", "SUPABASE_URL"],
+    [`${origin}/rest/v1`, client, "synthetic", "SUPABASE_URL"],
+    [`${origin}?redirect=other`, client, "synthetic", "SUPABASE_URL"],
+    [`${origin}#fragment`, client, "synthetic", "SUPABASE_URL"],
+  ]) {
+    let wrapped;
+    assert.doesNotThrow(() => { wrapped = createSessionFetch(url, id, key, noTransport); });
+    for (const method of ["GET", "HEAD", "POST", "DELETE"]) {
+      await assert.rejects(wrapped(`${origin}/rest/v1/shopify_sessions`, {
+        method, headers: { authorization: "Bearer synthetic-service-key", [header]: "forged" },
+      }), new RegExp(`binding is invalid: ${field}`));
+    }
+  }
+  assert.equal(calls, 0);
+});
+
+test("binding errors name failing fields without exposing configuration values", async () => {
+  let calls = 0;
+  const wrapped = createSessionFetch(
+    "https://username:private-password@other.supabase.co/private-path",
+    "private-wrong-client", "",
+    async () => { calls++; throw new Error("unexpected transport"); },
+  );
+  await assert.rejects(wrapped(`${origin}/rest/v1/shopify_sessions`), error => {
+    for (const field of ["SHOPIFY_API_KEY", "SHOPIFY_API_SECRET", "SUPABASE_URL"]) {
+      assert.ok(error.message.includes(field));
+    }
+    for (const value of ["username", "private-password", "other.supabase.co", "private-path", "private-wrong-client"]) {
+      assert.equal(error.message.includes(value), false);
+    }
+    return true;
+  });
+  assert.equal(calls, 0);
 });
 
 test("unexpected mutation destination or method cannot receive proof", async () => {
